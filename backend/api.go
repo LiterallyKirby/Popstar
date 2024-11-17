@@ -52,7 +52,7 @@ func Search(term string) ([]PackageInfo, error) {
 
 	return apiResponse.Results, nil
 }
-
+// This is gonna make me so mad istg
 func Install(url string) tea.Cmd {
 	return func() tea.Msg {
 		fmt.Println("Exiting to normal terminal to install the package...")
@@ -105,7 +105,7 @@ func Install(url string) tea.Cmd {
 			return nil
 		}
 
-		// Clean up the cloned repository
+		// Remove the temp file thingy
 		rmDir := exec.Command("rm", "-rf", repoName)
 		if err := rmDir.Run(); err != nil {
 			fmt.Println("Failed to remove the installer directory:", err)
@@ -113,7 +113,7 @@ func Install(url string) tea.Cmd {
 			return nil
 		}
 
-		// Print success message and wait before returning to Bubble Tea
+		// Let user know we donezo
 		clearCmd.Run()
 
 		fmt.Println("Package installed successfully!")
@@ -123,7 +123,7 @@ func Install(url string) tea.Cmd {
 	}
 }
 
-// Helper to extract repo name from URL
+// Helper to extract repo name from URL (made with chatgpt not gonna hold you)
 func getRepoName(url string) string {
 	parts := strings.Split(url, "/")
 	repoWithExt := parts[len(parts)-1]
