@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // AUR API URL for package search
@@ -51,30 +53,74 @@ func Search(term string) ([]PackageInfo, error) {
 	return apiResponse.Results, nil
 }
 
-// Function to install a package by cloning and running makepkg
-func Install(url string) error {
-	// Clone the repository
-	cmd := exec.Command("git", "clone", url)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to clone repository: %w", err)
+func Install(url string) tea.Cmd {
+	return func() tea.Msg {
+		fmt.Println("Exiting to normal terminal to install the package...")
+
+		// Store the current working directory
+		originalDir, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Failed to get current directory:", err)
+			return nil
+		}
+
+		// Clear the terminal
+		clearCmd := exec.Command("clear")
+		clearCmd.Stdout = os.Stdout
+		clearCmd.Run()
+
+		// Clone the repository
+		repoName := getRepoName(url)
+		cloneCmd := exec.Command("git", "clone", url)
+		cloneCmd.Stdout = os.Stdout
+		cloneCmd.Stderr = os.Stderr
+		if err := cloneCmd.Run(); err != nil {
+			fmt.Println("Error cloning repository:", err)
+			promptToContinue()
+			return nil
+		}
+
+		// Change to the repository directory
+		if err := os.Chdir(repoName); err != nil {
+			fmt.Println("Failed to change to repo directory:", err)
+			promptToContinue()
+			return nil
+		}
+
+		// Run the installation
+		makeCmd := exec.Command("sh", "-c", "makepkg -si -S --noconfirm")
+		makeCmd.Stdout = os.Stdout
+		makeCmd.Stderr = os.Stderr
+		makeCmd.Stdin = os.Stdin
+		if err := makeCmd.Run(); err != nil {
+			fmt.Println("Package installation failed:", err)
+			promptToContinue()
+			return nil
+		}
+
+		// Return to the original directory
+		if err := os.Chdir(originalDir); err != nil {
+			fmt.Println("Failed to return to original directory:", err)
+			promptToContinue()
+			return nil
+		}
+
+		// Clean up the cloned repository
+		rmDir := exec.Command("rm", "-rf", repoName)
+		if err := rmDir.Run(); err != nil {
+			fmt.Println("Failed to remove the installer directory:", err)
+			promptToContinue()
+			return nil
+		}
+
+		// Print success message and wait before returning to Bubble Tea
+		clearCmd.Run()
+
+		fmt.Println("Package installed successfully!")
+		promptToContinue()
+
+		return nil // Stop further updates
 	}
-
-	// Determine repository name from URL
-	repoName := getRepoName(url)
-	if err := os.Chdir(repoName); err != nil {
-		return fmt.Errorf("failed to change to repo directory: %w", err)
-	}
-
-	// Run makepkg to build and install
-	makeCmd := exec.Command("sh", "-c", "makepkg -si --noconfirm")
-	makeCmd.Stdout = os.Stdout
-	makeCmd.Stderr = os.Stderr
-
-	if err := makeCmd.Run(); err != nil {
-		return fmt.Errorf("makepkg failed: %w", err)
-	}
-
-	return nil
 }
 
 // Helper to extract repo name from URL
@@ -82,4 +128,10 @@ func getRepoName(url string) string {
 	parts := strings.Split(url, "/")
 	repoWithExt := parts[len(parts)-1]
 	return strings.TrimSuffix(repoWithExt, ".git")
+}
+
+// Helper to pause and wait for user confirmation
+func promptToContinue() {
+	fmt.Println("Press Enter to return to the menu...")
+	fmt.Scanln()
 }
