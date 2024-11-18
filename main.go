@@ -33,10 +33,11 @@ func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
 
 type model struct {
-	list       list.Model
-	searchList list.Model
-	searchBar  textinput.Model
-	items      []list.Item
+	list               list.Model
+	searchList         list.Model
+	searchBar          textinput.Model
+	items              []list.Item
+	isSearchBarFocused bool // Tracks if search bar is focused
 }
 
 func (m model) Init() tea.Cmd {
@@ -133,94 +134,62 @@ func updateSearch(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "esc":
-			// Switch back to main screen and refocus on the main list
+			// Switch back to the main screen
 			screen = "main"
-			m.list.FilterInput.Focus()
-
-			// Manually update the size of the lists on the main screen
-			h, v := docStyle.GetFrameSize()
-			m.list.SetSize(term_width-h-5, term_height-v)
-
+			return m, nil
+		case "tab":
+			// Toggle focus between the search bar and the search list
+			m.isSearchBarFocused = !m.isSearchBarFocused
+			if m.isSearchBarFocused {
+				m.searchBar.Focus()
+			} else {
+				m.searchList.SetSize(m.searchList.Width(), m.searchList.Height())
+			}
 			return m, nil
 		case "enter", "return":
-			if m.searchBar.Focused() {
-				// Trigger search when Enter is pressed
+			if m.isSearchBarFocused {
+				// Handle search bar input (perform search)
 				term := m.searchBar.Value()
-
-				// Perform the search using the provided function
 				searchData, err := respSearch.Search(term)
 				if err != nil {
-					panic(err) // Handle the error more gracefully in a real app
+					fmt.Println("Error:", err)
+					return m, nil
 				}
 
-				// Convert the results to []list.Item and append to the search list
+				// Populate search list with results
 				var newItems []list.Item
 				for _, result := range searchData {
-					name := result.Name
-					description := result.Description
-					newItem := item{
-						title: name,
-						desc:  description,
-					}
-					newItems = append(newItems, newItem) // Append new item to list
+					newItems = append(newItems, item{
+						title: result.Name,
+						desc:  result.Description,
+					})
 				}
-
-				// Update the search list with new items
 				m.searchList.SetItems(newItems)
-
-				// Reset the search bar and refocus
-				m.searchBar.Reset()
-
-				// Focus back to the search bar if you want
-				m.searchBar.Focus()
-
-				// Update the view to reflect new items
-				return m, nil
-			} else {
-				selectedIndex := m.searchList.Index()
-
-				// Get the list of all items in the searchList
-				items := m.searchList.Items()
-
-				// Check if the selected index is valid
-				if selectedIndex >= 0 && selectedIndex < len(items) {
-					// Get the selected item
-					selectedItem := items[selectedIndex]
-
-					// Type assert the selected item to your custom item struct
-					if item, ok := selectedItem.(item); ok {
-						tempUrl := "https://aur.archlinux.org/" + item.title + ".git"
-
-						// Run the installation process with sudo if necessary
-						output, err := runCommandWithSudo("git", []string{"clone", tempUrl})
-						if err != nil {
-							fmt.Println("Error installing:", err)
-							return m, nil
-						}
-						fmt.Println("Installation Output:", output)
-					} else {
-						fmt.Println("Selected item is not of the expected type")
-					}
+				m.isSearchBarFocused = !m.isSearchBarFocused
+				if m.isSearchBarFocused {
+					m.searchBar.Focus()
 				} else {
-					fmt.Println("Invalid selected index")
+					m.searchList.SetSize(m.searchList.Width(), m.searchList.Height())
+				}
+			} else {
+				// Handle selection from the search list
+				selectedIndex := m.searchList.Index()
+				if selectedIndex >= 0 && selectedIndex < len(m.searchList.Items()) {
+					selectedItem := m.searchList.Items()[selectedIndex].(item)
+					tempUrl := "https://aur.archlinux.org/" + selectedItem.title + ".git"
+					return m, tea.Batch(respSearch.Install(tempUrl))
 				}
 			}
+			return m, nil
 		}
-	case tea.WindowSizeMsg:
-		h, v = searchStyle.GetFrameSize()
-		term_width = msg.Width
-		term_height = msg.Height
-		// Adjust the height for searchList
-		searchListHeight := msg.Height - v - 3 // Adjust height to be lower
-		m.searchList.SetSize(msg.Width-h, searchListHeight)
-		m.list.SetSize(msg.Width-h, msg.Height-v)
 	}
 
-	// Handle updates for the search input
-	m.searchBar, cmd = m.searchBar.Update(msg)
-
-	// Update the search list
-	m.searchList, cmd = m.searchList.Update(msg)
+	// Update either the search bar or the list based on focus
+	if m.isSearchBarFocused {
+		m.searchBar, cmd = m.searchBar.Update(msg)
+	} else {
+		m.searchList, cmd = m.searchList.Update(msg)
+	}
 
 	return m, cmd
 }
@@ -240,9 +209,16 @@ func (m model) viewMain() string {
 }
 
 func (m model) viewSearch() string {
-	// Display search bar at the top and the filtered list below
 	searchText := m.searchBar.View()
+	if m.isSearchBarFocused {
+		searchText = lipgloss.NewStyle().Bold(true).Render(searchText)
+	}
+
 	listView := m.searchList.View()
+	if !m.isSearchBarFocused {
+		listView = lipgloss.NewStyle().Bold(true).Render(listView)
+	}
+
 	return docStyle.Render(searchText + "\n" + listView)
 }
 
@@ -259,24 +235,6 @@ func (m model) View() string {
 
 func main() {
 	// Check if the program is running as root before proceeding
-	if !checkIfRunningAsRoot() {
-		fmt.Println("This program requires root privileges. Please enter your password.")
-
-		// Re-run the program with sudo
-		cmdArgs := append([]string{os.Args[0]}, os.Args[1:]...) // Keep the same arguments
-		cmd := exec.Command("sudo", cmdArgs...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-
-		err := cmd.Run()
-		if err != nil {
-			fmt.Println("Error running program with sudo:", err)
-			os.Exit(1)
-		}
-		// Program will restart with sudo, so no further code will run here.
-		return
-	}
 
 	mainItems := []list.Item{
 		item{title: "Search", desc: "Search the aur"},
@@ -292,10 +250,11 @@ func main() {
 
 	// Create the initial model
 	m := model{
-		items:      searchItems,
-		list:       list.New(mainItems, list.NewDefaultDelegate(), 0, 0),
-		searchList: list.New(searchItems, list.NewDefaultDelegate(), 0, 0),
-		searchBar:  ti,
+		items:              searchItems,
+		list:               list.New(mainItems, list.NewDefaultDelegate(), 0, 0),
+		searchList:         list.New(searchItems, list.NewDefaultDelegate(), 0, 0),
+		searchBar:          ti,
+		isSearchBarFocused: true, // Start with the search bar focused
 	}
 
 	// Set initial titles and sizes
