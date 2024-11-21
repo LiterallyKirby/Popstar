@@ -57,7 +57,7 @@ func Search(term string) ([]PackageInfo, error) {
 
 func Get_Files(url string) tea.Cmd {
 	// Clone the repository
-	repoName := getRepoName(url)
+	repoName := GetRepoName(url)
 	if err := runCommandWithPty("git", "clone", url); err != nil {
 		fmt.Println("Error cloning repository:", err)
 		promptToContinue()
@@ -100,7 +100,7 @@ func runCommandWithPty(name string, args ...string) error {
 }
 
 // Helper to extract repo name from URL
-func getRepoName(url string) string {
+func GetRepoName(url string) string {
 	parts := strings.Split(url, "/")
 	repoWithExt := parts[len(parts)-1]
 	return strings.TrimSuffix(repoWithExt, ".git")

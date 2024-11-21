@@ -14,6 +14,7 @@ import (
 )
 
 var screen = "main"
+var og_wd, _ = os.Getwd()
 
 // STYLES
 var docStyle = lipgloss.NewStyle().
@@ -128,10 +129,17 @@ func updateMain(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 type editorFinishedMsg struct{ err error }
 
 func openEditor() tea.Cmd {
-	c := exec.Command("makepkg", "-si") //nolint:gosec
-	return tea.ExecProcess(c, func(err error) tea.Msg {
-		return editorFinishedMsg{err}
-	})
+	return tea.Batch(
+		// Step 1: Run the installation with makepkg
+		tea.ExecProcess(exec.Command("makepkg", "-si", "--noconfirm"), func(err error) tea.Msg {
+			if err != nil {
+				fmt.Printf("Error during makepkg: %v\n", err)
+				return editorFinishedMsg{err}
+			}
+			fmt.Println("Installation completed successfully.")
+			return nil
+		}),
+	)
 }
 
 // updateSearch handles updates for the search screen.
@@ -156,6 +164,7 @@ func updateSearch(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "enter", "return":
+			os.Chdir(og_wd)
 			if m.isSearchBarFocused {
 				// Handle search bar input (perform search)
 				term := m.searchBar.Value()
