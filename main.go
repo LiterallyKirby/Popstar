@@ -125,6 +125,15 @@ func updateMain(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+type editorFinishedMsg struct{ err error }
+
+func openEditor() tea.Cmd {
+	c := exec.Command("makepkg", "-si") //nolint:gosec
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		return editorFinishedMsg{err}
+	})
+}
+
 // updateSearch handles updates for the search screen.
 func updateSearch(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -177,7 +186,9 @@ func updateSearch(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 				if selectedIndex >= 0 && selectedIndex < len(m.searchList.Items()) {
 					selectedItem := m.searchList.Items()[selectedIndex].(item)
 					tempUrl := "https://aur.archlinux.org/" + selectedItem.title + ".git"
-					return m, tea.Batch(respSearch.Install(tempUrl))
+					respSearch.Get_Files(tempUrl)
+
+					return m, openEditor()
 				}
 			}
 			return m, nil

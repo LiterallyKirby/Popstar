@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/creack/pty"
 )
 
 // AUR API URL for package search
@@ -52,78 +54,52 @@ func Search(term string) ([]PackageInfo, error) {
 
 	return apiResponse.Results, nil
 }
-// This is gonna make me so mad istg
-func Install(url string) tea.Cmd {
-	return func() tea.Msg {
-		fmt.Println("Exiting to normal terminal to install the package...")
 
-		// Store the current working directory
-		originalDir, err := os.Getwd()
-		if err != nil {
-			fmt.Println("Failed to get current directory:", err)
-			return nil
-		}
-
-		// Clear the terminal
-		clearCmd := exec.Command("clear")
-		clearCmd.Stdout = os.Stdout
-		clearCmd.Run()
-
-		// Clone the repository
-		repoName := getRepoName(url)
-		cloneCmd := exec.Command("git", "clone", url)
-		cloneCmd.Stdout = os.Stdout
-		cloneCmd.Stderr = os.Stderr
-		if err := cloneCmd.Run(); err != nil {
-			fmt.Println("Error cloning repository:", err)
-			promptToContinue()
-			return nil
-		}
-
-		// Change to the repository directory
-		if err := os.Chdir(repoName); err != nil {
-			fmt.Println("Failed to change to repo directory:", err)
-			promptToContinue()
-			return nil
-		}
-
-		// Run the installation
-		makeCmd := exec.Command("sh", "-c", "makepkg -si -S --noconfirm")
-		makeCmd.Stdout = os.Stdout
-		makeCmd.Stderr = os.Stderr
-		makeCmd.Stdin = os.Stdin
-		if err := makeCmd.Run(); err != nil {
-			fmt.Println("Package installation failed:", err)
-			promptToContinue()
-			return nil
-		}
-
-		// Return to the original directory
-		if err := os.Chdir(originalDir); err != nil {
-			fmt.Println("Failed to return to original directory:", err)
-			promptToContinue()
-			return nil
-		}
-
-		// Remove the temp file thingy
-		rmDir := exec.Command("rm", "-rf", repoName)
-		if err := rmDir.Run(); err != nil {
-			fmt.Println("Failed to remove the installer directory:", err)
-			promptToContinue()
-			return nil
-		}
-
-		// Let user know we donezo
-		clearCmd.Run()
-
-		fmt.Println("Package installed successfully!")
+func Get_Files(url string) tea.Cmd {
+	// Clone the repository
+	repoName := getRepoName(url)
+	if err := runCommandWithPty("git", "clone", url); err != nil {
+		fmt.Println("Error cloning repository:", err)
 		promptToContinue()
-
-		return nil // Stop further updates
+		return tea.Quit
 	}
+
+	// Change to the repository directory
+	if err := os.Chdir(repoName); err != nil {
+		fmt.Println("Failed to change to repo directory:", err)
+		promptToContinue()
+		return tea.Quit
+	}
+	// Restart Bubble Tea program
+	return tea.Quit
 }
 
-// Helper to extract repo name from URL (made with chatgpt not gonna hold you)
+// Helper to run commands with pty
+func runCommandWithPty(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+
+	// Create a new pty
+	pty, err := pty.Start(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to start pty for command %s: %w", name, err)
+	}
+	defer pty.Close()
+
+	// Copy pty output to the real terminal
+	go func() {
+		_, _ = io.Copy(os.Stdout, pty)
+	}()
+
+	// Wait for the command to complete
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("command %s failed: %w", name, err)
+	}
+
+	return nil
+}
+
+// Helper to extract repo name from URL
 func getRepoName(url string) string {
 	parts := strings.Split(url, "/")
 	repoWithExt := parts[len(parts)-1]
