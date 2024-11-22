@@ -86,6 +86,7 @@ func updateMain(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "enter", "return":
+			m.searchBar.Focus()
 			if m.list.Index() == 0 {
 				// Switch to "Search" screen
 				screen = "search"
@@ -114,6 +115,7 @@ func updateMain(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 				m.searchBar.Focus()
 				return m, nil
 			}
+			m.searchBar.Focus()
 		}
 	case tea.WindowSizeMsg:
 		term_width, term_height = msg.Width, msg.Height
@@ -135,6 +137,7 @@ func updateSearch(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "esc":
 			screen = "main"
+			m.searchBar.Reset()
 			return m, nil
 		case "tab":
 			m.isSearchBarFocused = !m.isSearchBarFocused
@@ -221,7 +224,7 @@ func updateRemove(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "esc":
-			m.isSearchBarFocused = !m.isSearchBarFocused
+			m.searchBar.Reset()
 			screen = "main"
 			return m, nil
 		case "tab":
