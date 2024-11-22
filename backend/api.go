@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"path/filepath"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/creack/pty"
 )
@@ -56,22 +58,45 @@ func Search(term string) ([]PackageInfo, error) {
 }
 
 func Get_Files(url string) tea.Cmd {
-	// Clone the repository
-	repoName := GetRepoName(url)
-	if err := runCommandWithPty("git", "clone", url); err != nil {
-		fmt.Println("Error cloning repository:", err)
-		promptToContinue()
+	// Get the user's home directory
+	_, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("Error getting home directory:", err)
 		return tea.Quit
 	}
 
-	// Change to the repository directory
-	if err := os.Chdir(repoName); err != nil {
-		fmt.Println("Failed to change to repo directory:", err)
-		promptToContinue()
+	// Define the target directory within the user's home directory
+	baseDir := filepath.Join(os.TempDir(), "popstarTemp")
+
+	// Ensure the target directory exists
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		fmt.Println("Error creating directory:", err)
 		return tea.Quit
 	}
-	// Restart Bubble Tea program
-	return tea.Quit
+
+	// Change to the target base directory
+	if err := os.Chdir(baseDir); err != nil {
+		fmt.Println("Error changing to base directory:", err)
+		return tea.Quit
+	}
+
+	// Extract repository name from the URL
+	repoName := GetRepoName(url)
+
+	// Clone the repository
+	if err := runCommandWithPty("git", "clone", url); err != nil {
+		fmt.Println("Error cloning repository:", err)
+		return tea.Quit
+	}
+
+	// Change to the cloned repository directory
+	if err := os.Chdir(filepath.Join(baseDir, repoName)); err != nil {
+		fmt.Println("Failed to change to repository directory:", err)
+		return tea.Quit
+	}
+
+	fmt.Println("Repository cloned successfully!")
+	return nil
 }
 
 // Helper to run commands with pty
