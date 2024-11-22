@@ -5,6 +5,14 @@
 
 This is still in it's testing phase, some packages will proabally not work icl, not recomended as ur main install tool right now
 
+I will personally not be adding default arch repository support my self because if you can't use pacman you might just be cooked
+
+# To-Do
+
+- Make the remove option functional
+- Make menus look better
+- I'll think of more as time goes on.
+
 Features as of right now:
 
 Installing packages
