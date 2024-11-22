@@ -9,7 +9,7 @@ I will personally not be adding default arch repository support my self because 
 
 # To-Do
 
-- ~~Make the remove option functional
+- ~~Make the remove option functional~~
 - Make menus look better
 - I'll think of more as time goes on.
 
