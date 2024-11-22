@@ -1,6 +1,7 @@
 package respSearch
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -135,4 +136,28 @@ func GetRepoName(url string) string {
 func promptToContinue() {
 	fmt.Println("Press Enter to return to the menu...")
 	fmt.Scanln()
+}
+
+func GetInstalledPackages() ([]string, error) {
+	// Execute the pacman command
+	cmd := exec.Command("pacman", "-Q")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("error executing pacman: %w", err)
+	}
+
+	// Split the output into lines (each line is a package)
+	lines := strings.Split(out.String(), "\n")
+
+	// Remove empty lines
+	var packages []string
+	for _, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			packages = append(packages, line)
+		}
+	}
+
+	return packages, nil
 }
