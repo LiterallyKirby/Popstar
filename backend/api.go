@@ -23,10 +23,11 @@ const aurURL = "https://aur.archlinux.org/rpc/?v=5&type=search&arg="
 
 // Structs for JSON parsing
 type PackageInfo struct {
-	Name        string `json:"Name"`
-	Description string `json:"Description"`
-	Version     string `json:"Version"`
-	URL         string `json:"URL"`
+	Name        string  `json:"Name"`
+	Description string  `json:"Description"`
+	Version     string  `json:"Version"`
+	Popularity  float32 `json:"Popularity"`
+	URL         string  `json:"URL"`
 }
 
 type ApiResponse struct {
