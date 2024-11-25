@@ -1,5 +1,11 @@
 # Popstar
 
+# Last update:
+
+WE ON THE AUR NOW!!!:
+
+https://aur.archlinux.org/packages/popstar
+
 ![image](https://github.com/user-attachments/assets/7d67c684-4317-4cdd-945f-73aaf2b3a6dc)
 
 
