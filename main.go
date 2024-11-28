@@ -234,8 +234,13 @@ func updateRemove(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 				selectedIndex := m.packageList.Index()
 				if selectedIndex >= 0 {
 					selectedItem := m.packageList.Items()[selectedIndex].(item)
-					fmt.Printf("Removing package: %s\n", selectedItem.title)
-					return m, removePackage(selectedItem.title)
+					words := strings.Fields(selectedItem)
+	
+					if len(words) > 0 {
+						firstWord := words[0]
+					}
+					fmt.Printf("Removing package: %s\n", firstWord)
+					return m, removePackage(firstWord)
 				}
 			}
 		}
