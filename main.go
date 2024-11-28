@@ -188,7 +188,7 @@ func removePackage(item string) tea.Cmd {
 		}),
 	)
 }
-
+var firstWord string
 func updateRemove(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
@@ -237,7 +237,7 @@ func updateRemove(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 					words := strings.Fields(selectedItem)
 	
 					if len(words) > 0 {
-						firstWord := words[0]
+						firstWord = words[0]
 					}
 					fmt.Printf("Removing package: %s\n", firstWord)
 					return m, removePackage(firstWord)
