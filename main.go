@@ -209,40 +209,45 @@ func updateRemove(msg tea.Msg, m model) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "enter", "return":
-			if m.isSearchBarFocused {
-				// Filter installed packages by search term
-				term := strings.ToLower(strings.TrimSpace(m.searchBar.Value()))
+	if m.isSearchBarFocused {
+		// Filter installed packages by search term
+		term := strings.ToLower(strings.TrimSpace(m.searchBar.Value()))
 
-				installedPackages, err := respSearch.GetInstalledPackages()
-				if err != nil {
-					log.Println("Error fetching installed packages:", err)
-					return m, nil
-				}
+		installedPackages, err := respSearch.GetInstalledPackages()
+		if err != nil {
+			log.Println("Error fetching installed packages:", err)
+			return m, nil
+		}
 
-				var newItems []list.Item
-				for _, pkg := range installedPackages {
-					if strings.Contains(strings.ToLower(pkg), term) {
-						newItems = append(newItems, item{
-							title: pkg,
-							desc:  "Installed package",
-						})
-					}
-				}
-
-				m.packageList.SetItems(newItems)
-			} else {
-				selectedIndex := m.packageList.Index()
-				if selectedIndex >= 0 {
-					selectedItem := m.packageList.Items()[selectedIndex].(item)
-					words := strings.Fields(selectedItem)
-	
-					if len(words) > 0 {
-						firstWord = words[0]
-					}
-					fmt.Printf("Removing package: %s\n", firstWord)
-					return m, removePackage(firstWord)
-				}
+		var newItems []list.Item
+		for _, pkg := range installedPackages {
+			if strings.Contains(strings.ToLower(pkg), term) {
+				newItems = append(newItems, item{
+					title: pkg,
+					desc:  "Installed package",
+				})
 			}
+		}
+
+		m.packageList.SetItems(newItems)
+	} else {
+		selectedIndex := m.packageList.Index()
+		if selectedIndex >= 0 {
+			// Retrieve selected item
+			selectedItem := m.packageList.Items()[selectedIndex].(item)
+
+			// Extract the first word from the title
+			firstWord := ""
+			words := strings.Fields(selectedItem.title)
+			if len(words) > 0 {
+				firstWord = words[0]
+			}
+
+			fmt.Printf("Removing package: %s\n", firstWord)
+			return m, removePackage(firstWord)
+		}
+	}
+
 		}
 	}
 
