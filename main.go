@@ -12,8 +12,9 @@ import (
 	respSearch "popstar/backend"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
+
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -22,7 +23,8 @@ var screen = "main"
 
 // STYLES
 var docStyle = lipgloss.NewStyle().
-	Margin(1, 2).
+	Margin(2, 2).
+	Padding(2,0,1,0).
 	Border(lipgloss.RoundedBorder()).
 	BorderTop(true).
 	BorderLeft(true)
